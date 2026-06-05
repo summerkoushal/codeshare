@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0e0e0e;color:#d4d4d4;font-family:'Roboto',sans-serif;height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  input{background:transparent;border:none;border-bottom:1px solid #2a2a2a;color:#d4d4d4;font-family:'Roboto',sans-serif;font-size:14px;padding:6px 2px;outline:none;width:100%;transition:border-color .2s}
+  input::placeholder{color:#3a3a3a}
+  input.err{border-bottom-color:#c0392b}
+  input:focus{border-bottom-color:#555}
+  a{color:#555;font-size:11px;cursor:pointer;text-decoration:none}
+  a:hover{color:#999}
+  .auth{display:flex;flex-direction:column;gap:20px;width:200px}
+  button{background:#1a1a1a;border:none;color:#aaa;font-family:'Roboto',sans-serif;font-size:18px;padding:5px 10px;cursor:pointer;border-radius:5px;transition:background .2s,color .2s;line-height:1}
+  button:hover{background:#252525;color:#eee}
+  button.save-btn{background:#1a2a1a;color:#5a9a5a;font-size:13px;padding:5px 12px}
+  button.save-btn:hover{background:#1f331f;color:#7aba7a}
+  button.del-btn{background:#2a1515;color:#8a4040;font-size:13px;padding:5px 12px}
+  button.del-btn:hover{background:#3a1a1a;color:#c06060}
+
+  /* app layout */
+  #app{display:none;width:100vw;height:100vh;flex-direction:row}
+  #rhs{width:240px;min-width:180px;border-right:1px solid #161616;display:flex;flex-direction:column;overflow:hidden}
+  #lhs{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+  /* rhs top bar */
+  .rhs-top{padding:10px 12px;border-bottom:1px solid #161616;display:flex;align-items:center;gap:8px}
+  #username-tag{flex:1;font-size:13px;font-weight:500;letter-spacing:.04em;color:transparent;background:linear-gradient(90deg,#6a9fb5,#a07fc0);-webkit-background-clip:text;background-clip:text;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #notes-list{flex:1;overflow-y:auto}
+  .note-item{padding:9px 12px;border-bottom:1px solid #111;cursor:pointer;transition:background .15s}
+  .note-item:hover{background:#131313}
+  .note-item.active{background:#161616;border-left:2px solid #3a3a5a}
+  .note-item h4{font-size:12px;color:#bbb;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .note-item p{font-size:10px;color:#383838;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* lhs */
+  .lhs-top{padding:8px 14px;border-bottom:1px solid #161616;display:flex;gap:8px;align-items:center}
+  .lhs-top input{font-size:13px}
+
+  /* mixed editor */
+  #mixed-editor{flex:1;overflow-y:auto;padding:10px 14px;display:flex;flex-direction:column;gap:6px;cursor:text}
+  .text-block{background:transparent;border:none;outline:none;resize:none;font-family:'Roboto',sans-serif;font-size:13px;color:#ccc;line-height:1.7;width:100%;min-height:24px;overflow:hidden}
+  .img-block{position:relative;display:inline-block;max-width:100%}
+  .img-block img{max-width:100%;border-radius:4px;display:block}
+  .img-block .rm{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;color:#c06060;font-size:12px;padding:2px 6px;border-radius:3px;cursor:pointer;opacity:0;transition:opacity .2s}
+  .img-block:hover .rm{opacity:1}
+
+  .toolbar{padding:7px 14px;border-top:1px solid #161616;display:flex;gap:8px;align-items:center}
+  .saved-flash{font-size:10px;color:#3a6a3a;opacity:0;transition:opacity .5s;margin-left:4px}
+  .saved-flash.show{opacity:1}
+  .err-flash{font-size:10px;color:#8a3a3a;opacity:0;transition:opacity .5s;margin-left:4px}
+  .err-flash.show{opacity:1}
+
+  /* drop overlay */
+  #drop-zone{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:100;flex-direction:column;gap:10px;font-size:13px;color:#555;pointer-events:none}
+  #drop-zone.active{display:flex}
+  #drop-zone .icon{font-size:36px}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth" id="login-form">
+    <input id="l-id" placeholder="enter id" autocomplete="off"/>
+    <input id="l-pw" placeholder="enter password" type="password"/>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+      <button style="font-size:13px;padding:6px 14px;background:#1a2a1a;color:#5a9a5a" onclick="doLogin()">→</button>
+      <a onclick="showReg()">new user</a>
+    </div>
+  </div>
+  <div class="auth" id="reg-form" style="display:none">
+    <input id="r-id" placeholder="enter id" autocomplete="off"/>
+    <input id="r-pw" placeholder="enter password" type="password"/>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+      <button style="font-size:13px;padding:6px 14px;background:#1a2a1a;color:#5a9a5a" onclick="doReg()">→</button>
+      <a onclick="showLogin()">existing user</a>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div id="rhs">
+    <div class="rhs-top">
+      <span id="username-tag"></span>
+      <button title="New note" onclick="newNote()" style="font-size:20px;padding:2px 8px;background:#1a1f2a;color:#6a9fb5">＋</button>
+      <button title="Exit" onclick="doLogout()" style="font-size:16px;padding:2px 8px;background:#2a1515;color:#c06060">✕</button>
+    </div>
+    <div id="notes-list"></div>
+  </div>
+  <div id="lhs">
+    <div class="lhs-top">
+      <input id="note-title" placeholder="title"/>
+    </div>
+    <div id="mixed-editor" onclick="focusLastText()"></div>
+    <div class="toolbar">
+      <button class="save-btn" onclick="saveNote()">save</button>
+      <button class="del-btn" onclick="deleteNote()">delete</button>
+      <span class="saved-flash" id="flash">✓ saved</span>
+      <span class="err-flash" id="eflash"></span>
+    </div>
+  </div>
+</div>
+
+<div id="drop-zone"><div class="icon">⬇</div>drop image</div>
+
+<script>
+const USERS_KEY='mnapp_users';
+const NOTES_KEY='mnapp_notes';
+const IMGS_KEY='mnapp_imgs';
+
+function getUsers(){try{return JSON.parse(localStorage.getItem(USERS_KEY)||'{}')}catch{return{}}}
+function saveUsers(u){localStorage.setItem(USERS_KEY,JSON.stringify(u))}
+function getNotesMeta(uid){try{return JSON.parse(localStorage.getItem(NOTES_KEY+'_'+uid)||'[]')}catch{return[]}}
+function saveNotesMeta(uid,n){localStorage.setItem(NOTES_KEY+'_'+uid,JSON.stringify(n))}
+// images stored individually by id
+function getImg(id){return localStorage.getItem(IMGS_KEY+'_'+id)||null}
+function setImg(id,data){
+  try{localStorage.setItem(IMGS_KEY+'_'+id,data);return true}
+  catch(e){return false}
+}
+function delImg(id){localStorage.removeItem(IMGS_KEY+'_'+id)}
+
+let currentUser=null, notes=[], activeIdx=null;
+
+// ── note structure: {title, blocks:[{type:'text',content}|{type:'img',id}], ts}
+// blocks serialized to meta, images stored separately
+
+function showReg(){document.getElementById('login-form').style.display='none';document.getElementById('reg-form').style.display='flex'}
+function showLogin(){document.getElementById('reg-form').style.display='none';document.getElementById('login-form').style.display='flex'}
+
+function doLogin(){
+  const id=document.getElementById('l-id'),pw=document.getElementById('l-pw');
+  let ok=true;id.classList.remove('err');pw.classList.remove('err');
+  if(!id.value.trim()){id.classList.add('err');ok=false}
+  if(!pw.value){pw.classList.add('err');ok=false}
+  if(!ok)return;
+  const users=getUsers();
+  if(!users[id.value.trim()]||users[id.value.trim()]!==pw.value){id.classList.add('err');pw.classList.add('err');return}
+  enterApp(id.value.trim());
+}
+
+function doReg(){
+  const id=document.getElementById('r-id'),pw=document.getElementById('r-pw');
+  let ok=true;id.classList.remove('err');pw.classList.remove('err');
+  if(!id.value.trim()){id.classList.add('err');ok=false}
+  if(!pw.value){pw.classList.add('err');ok=false}
+  if(!ok)return;
+  const users=getUsers();
+  if(users[id.value.trim()]){id.classList.add('err');return}
+  users[id.value.trim()]=pw.value;saveUsers(users);
+  enterApp(id.value.trim());
+}
+
+function enterApp(uid){
+  currentUser=uid;notes=getNotesMeta(uid);
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('username-tag').textContent=uid;
+  renderList();
+  if(notes.length>0)loadNote(0);else{activeIdx=null;renderMixed([{type:'text',content:''}])}
+}
+
+function doLogout(){
+  currentUser=null;notes=[];activeIdx=null;
+  document.getElementById('app').style.display='none';
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('l-id').value='';document.getElementById('l-pw').value='';
+  showLogin();
+}
+
+function renderList(){
+  const list=document.getElementById('notes-list');list.innerHTML='';
+  notes.forEach((n,i)=>{
+    const preview=n.blocks.filter(b=>b.type==='text').map(b=>b.content).join(' ').slice(0,60);
+    const d=document.createElement('div');
+    d.className='note-item'+(i===activeIdx?' active':'');
+    d.innerHTML=`<h4>${esc(n.title||'untitled')}</h4><p>${esc(preview||'[image]')}</p>`;
+    d.onclick=()=>loadNote(i);
+    list.appendChild(d);
+  });
+}
+
+function loadNote(i){
+  activeIdx=i;
+  const n=notes[i];
+  document.getElementById('note-title').value=n.title||'';
+  renderMixed(n.blocks);
+  renderList();
+}
+
+function newNote(){
+  activeIdx=null;
+  document.getElementById('note-title').value='';
+  renderMixed([{type:'text',content:''}]);
+  renderList();
+}
+
+// ── Mixed editor ──
+function renderMixed(blocks){
+  const me=document.getElementById('mixed-editor');
+  me.innerHTML='';
+  (blocks.length?blocks:[{type:'text',content:''}]).forEach((b,i)=>appendBlock(b,i));
+  // focus first text
+  const first=me.querySelector('.text-block');
+  if(first){first.focus();moveCursorToEnd(first);}
+}
+
+function appendBlock(b, idx){
+  const me=document.getElementById('mixed-editor');
+  if(b.type==='text'){
+    const ta=document.createElement('textarea');
+    ta.className='text-block';
+    ta.value=b.content||'';
+    ta.placeholder=me.children.length===0?'write here. drag & drop images to embed them.':'';
+    autoResize(ta);
+    ta.addEventListener('input',()=>autoResize(ta));
+    ta.addEventListener('keydown',handleTextKeydown);
+    me.appendChild(ta);
+  } else if(b.type==='img'){
+    const src=getImg(b.id);
+    if(!src)return;
+    const wrap=document.createElement('div');wrap.className='img-block';wrap.dataset.imgId=b.id;
+    const img=document.createElement('img');img.src=src;
+    const rm=document.createElement('button');rm.className='rm';rm.textContent='✕';
+    rm.onclick=e=>{e.stopPropagation();removeImgBlock(wrap)};
+    wrap.appendChild(img);wrap.appendChild(rm);
+    me.appendChild(wrap);
+    // add a text block after image for continued typing
+    const ta=document.createElement('textarea');
+    ta.className='text-block';ta.value='';
+    autoResize(ta);
+    ta.addEventListener('input',()=>autoResize(ta));
+    ta.addEventListener('keydown',handleTextKeydown);
+    me.appendChild(ta);
+  }
+}
+
+function removeImgBlock(wrap){
+  const id=wrap.dataset.imgId;
+  delImg(id);
+  const me=document.getElementById('mixed-editor');
+  // remove wrap and the textarea after it if empty
+  const next=wrap.nextSibling;
+  if(next&&next.classList&&next.classList.contains('text-block')&&!next.value.trim()){
+    me.removeChild(next);
+  }
+  me.removeChild(wrap);
+  if(!me.querySelector('.text-block')){
+    const ta=document.createElement('textarea');ta.className='text-block';ta.value='';
+    autoResize(ta);ta.addEventListener('input',()=>autoResize(ta));
+    ta.addEventListener('keydown',handleTextKeydown);
+    me.appendChild(ta);ta.focus();
+  }
+}
+
+function autoResize(ta){
+  ta.style.height='auto';
+  ta.style.height=Math.max(24,ta.scrollHeight)+'px';
+}
+
+function handleTextKeydown(e){
+  // nothing special needed, natural textarea behavior
+}
+
+function focusLastText(){
+  const txts=[...document.querySelectorAll('.text-block')];
+  if(txts.length){const last=txts[txts.length-1];last.focus();moveCursorToEnd(last);}
+}
+
+function moveCursorToEnd(ta){
+  ta.selectionStart=ta.selectionEnd=ta.value.length;
+}
+
+function readBlocks(){
+  const me=document.getElementById('mixed-editor');
+  const blocks=[];
+  me.childNodes.forEach(node=>{
+    if(node.classList&&node.classList.contains('text-block')){
+      blocks.push({type:'text',content:node.value||''});
+    } else if(node.classList&&node.classList.contains('img-block')){
+      blocks.push({type:'img',id:node.dataset.imgId});
+    }
+  });
+  return blocks;
+}
+
+function saveNote(){
+  const title=document.getElementById('note-title').value.trim()||'untitled';
+  const blocks=readBlocks();
+  const note={title,blocks,ts:Date.now()};
+  try{
+    if(activeIdx===null){
+      notes.unshift(note);activeIdx=0;
+    } else {
+      notes[activeIdx]=note;
+    }
+    saveNotesMeta(currentUser,notes);
+    renderList();
+    showFlash('flash');
+  } catch(e){
+    showEFlash('storage full');
+  }
+}
+
+function deleteNote(){
+  if(activeIdx===null)return;
+  // clean up images
+  const n=notes[activeIdx];
+  n.blocks.filter(b=>b.type==='img').forEach(b=>delImg(b.id));
+  notes.splice(activeIdx,1);
+  saveNotesMeta(currentUser,notes);
+  activeIdx=null;
+  if(notes.length>0)loadNote(0);else{renderMixed([{type:'text',content:''}]);}
+  renderList();
+}
+
+function showFlash(id){
+  const f=document.getElementById(id);
+  f.classList.add('show');setTimeout(()=>f.classList.remove('show'),1400);
+}
+function showEFlash(msg){
+  const f=document.getElementById('eflash');f.textContent=msg;
+  f.classList.add('show');setTimeout(()=>f.classList.remove('show'),2500);
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+// ── Drag & Drop ──
+const dropZone=document.getElementById('drop-zone');
+let dragCnt=0;
+
+document.addEventListener('dragenter',e=>{
+  if(!currentUser)return;
+  if([...e.dataTransfer.items].some(i=>i.kind==='file'&&i.type.startsWith('image/'))){
+    dragCnt++;dropZone.classList.add('active');
+  }
+});
+document.addEventListener('dragleave',()=>{dragCnt--;if(dragCnt<=0){dragCnt=0;dropZone.classList.remove('active');}});
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('drop',e=>{
+  e.preventDefault();dragCnt=0;dropZone.classList.remove('active');
+  if(!currentUser)return;
+  const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));
+  files.forEach(embedImg);
+});
+
+function embedImg(file){
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const data=ev.target.result;
+    const id='img_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+    const ok=setImg(id,data);
+    if(!ok){showEFlash('image too large');return;}
+    insertImgBlock(id);
+  };
+  reader.readAsDataURL(file);
+}
+
+function insertImgBlock(id){
+  const me=document.getElementById('mixed-editor');
+  // find focused textarea or last textarea
+  const txts=[...me.querySelectorAll('.text-block')];
+  let focused=txts.find(t=>t===document.activeElement)||txts[txts.length-1];
+
+  // split focused textarea at cursor
+  if(focused){
+    const pos=focused.selectionStart;
+    const before=focused.value.slice(0,pos);
+    const after=focused.value.slice(pos);
+    focused.value=before;autoResize(focused);
+
+    // img block
+    const wrap=document.createElement('div');wrap.className='img-block';wrap.dataset.imgId=id;
+    const img=document.createElement('img');img.src=getImg(id);
+    const rm=document.createElement('button');rm.className='rm';rm.textContent='✕';
+    rm.onclick=e=>{e.stopPropagation();removeImgBlock(wrap)};
+    wrap.appendChild(img);wrap.appendChild(rm);
+
+    // after-textarea
+    const ta=document.createElement('textarea');ta.className='text-block';ta.value=after;
+    autoResize(ta);ta.addEventListener('input',()=>autoResize(ta));
+    ta.addEventListener('keydown',handleTextKeydown);
+
+    const parent=focused.parentNode;
+    const ref=focused.nextSibling;
+    parent.insertBefore(wrap,ref);
+    parent.insertBefore(ta,wrap.nextSibling);
+    ta.focus();ta.selectionStart=0;ta.selectionEnd=0;
+  }
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    if(document.getElementById('reg-form').style.display!=='none')doReg();
+    else if(document.getElementById('auth-screen').style.display!=='none')doLogin();
+  }
+});
+</script>
+</body>
+</html>
